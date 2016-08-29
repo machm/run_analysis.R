@@ -1,0 +1,170 @@
+---
+title: "run_analysis.R"
+author: "M Mach"
+date: "August 26, 2016"
+output: html_document
+---
+
+The objective of this assignment was to take several raw .txt files and transform, combine, and clean the data in R. In doing so, we are now able to use this data for analysis. My process consisted of:
+
+1) Loading data and required packages
+2) combineing several seperate datasets to a single dataset (one for "train" and one for "test")
+3) combining the test and train data to make one comprehensive dataset
+4) subsetting from this data the mean and standard deviation measures for each actiity and subject
+
+
+Feature Selection (provided by UCI HAR dataset)
+This data is provided with the UCI HAR dataset and explains the features and measures present in the data files. 
+
+====================================================================
+
+*The features selected for this database come from the accelerometer and gyroscope 3-axial raw signals tAcc-XYZ and tGyro-XYZ. These time domain signals (prefix 't' to denote time) were captured at a constant rate of 50 Hz. Then they were filtered using a median filter and a 3rd order low pass Butterworth filter with a corner frequency of 20 Hz to remove noise. Similarly, the acceleration signal was then separated into body and gravity acceleration signals (tBodyAcc-XYZ and tGravityAcc-XYZ) using another low pass Butterworth filter with a corner frequency of 0.3 Hz.*
+
+*Subsequently, the body linear acceleration and angular velocity were derived in time to obtain Jerk signals (tBodyAccJerk-XYZ and tBodyGyroJerk-XYZ). Also the magnitude of these three-dimensional signals were calculated using the Euclidean norm (tBodyAccMag, tGravityAccMag, tBodyAccJerkMag, tBodyGyroMag, tBodyGyroJerkMag).*
+
+*Finally a Fast Fourier Transform (FFT) was applied to some of these signals producing fBodyAcc-XYZ, fBodyAccJerk-XYZ, fBodyGyro-XYZ, fBodyAccJerkMag, fBodyGyroMag, fBodyGyroJerkMag. (Note the 'f' to indicate frequency domain signals).* 
+
+*These signals were used to estimate variables of the feature vector for each pattern:* 
+*'-XYZ' is used to denote 3-axial signals in the X, Y and Z directions.*
+
+*tBodyAcc-XYZ*
+*tGravityAcc-XYZ*
+*tBodyAccJerk-XYZ*
+*tBodyGyro-XYZ*
+*tBodyGyroJerk-XYZ*
+*tBodyAccMag*
+*tGravityAccMag*
+*tBodyAccJerkMag*
+*tBodyGyroMag*
+*tBodyGyroJerkMag*
+*fBodyAcc-XYZ*
+*fBodyAccJerk-XYZ*
+*fBodyGyro-XYZ*
+*fBodyAccMag*
+*fBodyAccJerkMag*
+*fBodyGyroMag*
+*fBodyGyroJerkMag*
+
+*The set of variables that were estimated from these signals are:* 
+
+*mean(): Mean value*
+*std(): Standard deviation*
+*mad(): Median absolute deviation*
+*max(): Largest value in array*
+*min(): Smallest value in array*
+*sma(): Signal magnitude area*
+*energy(): Energy measure. Sum of the squares divided by the number of values.* 
+*iqr(): Interquartile range*
+*entropy(): Signal entropy*
+*arCoeff(): Autorregresion coefficients with Burg order equal to 4*
+*correlation(): correlation coefficient between two signals*
+*maxInds(): index of the frequency component with largest magnitude*
+*meanFreq(): Weighted average of the frequency components to obtain a mean frequency*
+*skewness(): skewness of the frequency domain signal* 
+*kurtosis(): kurtosis of the frequency domain signal*
+*bandsEnergy(): Energy of a frequency interval within the 64 bins of the FFT of each window.*
+*angle(): Angle between to vectors.*
+
+*Additional vectors obtained by averaging the signals in a signal window sample. These are used on the angle() variable:*
+
+*gravityMean*
+*tBodyAccMean*
+*tBodyAccJerkMean*
+*tBodyGyroMean*
+*tBodyGyroJerkMean*
+
+======================================================================
+
+The complete list of variables of each feature vector is available in 'features.txt', and is available along with the raw data files at the following link.
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip
+
+**PROCESS**
+
+For this process, I had to do the following transformations:
+
+ - Combine the data from the "train" and "test" subject / x / y files, and merged them with the activity_labels and       features files.
+ - Removed redundant columnes like "V1", a column that was used for binds but then no longer needed. 
+  - Removed all variables that didn't include measures of mean or standard deviation.
+  
+ The following script (available in the README.md file in this repo) generated this table.
+ 
+ 
+```{run_analysis Script}
+library(dplyr)
+library(knitr)
+
+##Read features and activity label files into R
+features <- read.table("UCI HAR Dataset/features.txt")
+activity_labels <- read.table("UCI HAR Dataset/activity_labels.txt")
+
+##Read train files into R
+subject_train <- read.table("UCI HAR Dataset/train/subject_train.txt")
+y_train <- read.table("UCI HAR Dataset/train/y_train.txt")
+x_train <- read.table("UCI HAR Dataset/train/x_train.txt")
+
+##Read test fiels into R
+subject_test <- read.table("UCI HAR Dataset/test/subject_test.txt")
+y_test <- read.table("UCI HAR Dataset/test/y_test.txt")
+x_test <- read.table("UCI HAR Dataset/test/x_test.txt")
+
+#merge train x/y/subject datasets to create one comprehensive dataset
+##To start, give the activity labels file column names for each variable
+colnames(activity_labels) <- c("V1","Activity")
+
+##give the subject_train file a V1 column header
+subject <- rename(subject_train, subject=V1)
+
+##bind the subject and y_train files 
+train1 <- cbind(y_train,subject)
+
+##Merge the file above with the activity labels, and use "V1" for the merge
+train2 <- merge(train1,activity_labels, by=("V1"))
+
+##Give the 2nd colume of the features file to the column name of the x_train file
+colnames(x_train) <- features[,2]
+
+##Bind train2 and the x_train files (with the new column name from features.txt)
+train3 <- cbind(train2,x_train)
+
+##Remove the V1 colume from train3 becuase it is no longer needed
+train4 <- train3[,-1]
+
+## create a new object that contains only columns that contain the word "subject"/"Activity"/"mean"/ or "std"
+train5 <- select(train4,contains("subject"), contains("Activity"), contains("mean"), contains("std"))
+
+#merge train x/y/subject datasets to create one comprehensive dataset
+##The activity labels file will need column names, but we have already done this so no need to duplicate
+##give the subject_train file a V1 column header
+subject2 <- rename(subject_test, subject=V1)
+
+##bind the subject and y_test files 
+test1 <- cbind(y_test,subject2)
+
+##Merge the file above with the activity labels, and use "V1" for the merge
+test2 <- merge(test1,activity_labels, by=("V1"))
+
+##Give the 2nd colume of the features file to the column name of the x_test file
+colnames(x_test) <- features[,2]
+
+##Bind test2 and the x_test files (with the new column name from features.txt)
+test3 <- cbind(test2,x_test)
+
+##Remove the V1 colume from test3 becuase it is no longer needed
+test4 <- test3[,-1]
+
+## create a new object that contains only columns that contain the word "subject"/"Activity"/"mean"/ or "std"
+test5 <- select(test4,contains("subject"), contains("Activity"), contains("mean"), contains("std"))
+
+#Bind the train5 and test5 datasets to produce one comprehensive dataset
+##and create a .txt file in the working diretory for "mergetraintest"
+mergetraintest <- rbind(train5,test5)
+write.table(mergetraintest,"./mergetraintest.txt",sep=" ",row.name=FALSE) 
+
+#create a seperate dataset that shows only the average of each variable for each activity and subject
+run_analysis <- (mergetraintest%>%group_by(subject,Activity) %>% summarise_each(funs( mean)))
+print(run_analysis)
+```
+
+
+
